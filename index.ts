@@ -1,6 +1,10 @@
 import DiscordJs, { ApplicationCommandOptionType, GatewayIntentBits, ActivityType, EmbedBuilder } from 'discord.js'
 import google from 'googlethis'
+import Booru from 'booru'
 import dotenv from 'dotenv'
+
+// Set booru search
+const esix = Booru('e621')
 
 // Config env file
 dotenv.config()
@@ -112,6 +116,20 @@ client.on('ready', () => {
             }
         ]
     })
+
+    // Create e621 search command
+    commands?.create({
+        name: 'e621',
+        description: 'Searches e621',
+        options: [
+            {
+                name: 'query',
+                description: 'Post to search',
+                required: true,
+                type: ApplicationCommandOptionType.String,
+            }
+        ]
+    })
 })
 
 // Listen for slash commands
@@ -130,15 +148,17 @@ client.on('interactionCreate', async (interaction) => {
             .setTitle('Help help!')
             .setDescription('How to use the bot!!!!!')
             .addFields(
-                { name: 'ping', value: 'Sends bots current ping'},
+                { name: 'ping', value: 'Sends bots current ping, used for testing'},
                 { name: 'help', value: 'Shows this message' },
-                { name: 'add', value: 'Adds two numbers' },
-                { name: 'google', value: 'Searches google' },
+                { name: 'add', value: 'Adds two numbers, used for testing' },
+                { name: 'google', value: 'Searches google, can add specific searches such as definition and translate' },
+                { name: 'image', value: 'Searches for a random image from google related to your search' },
+                { name: 'e621', value: 'Searches for a random image from e621 related to your search, still being tested' },
             )
             .setFooter({
                 text: 'Made by Fluffy Bean#5212',
             })
-            .setColor('#FEBBEC')
+            .setColor('#8C977D')
             .setThumbnail('https://i.imgur.com/6Kj9knK.jpeg')
         
         interaction.reply({
@@ -171,7 +191,7 @@ client.on('interactionCreate', async (interaction) => {
             const embed = new EmbedBuilder()
             
             .setFooter({ text: 'Made by Fluffy Bean#5212' })
-            .setColor('#FEBBEC')
+            .setColor('#8C977D')
 
 
             .setFields(
@@ -187,15 +207,44 @@ client.on('interactionCreate', async (interaction) => {
             const embed = new EmbedBuilder()
 
             .setFooter({ text: 'Made by Fluffy Bean#5212' })
-            .setColor('#FEBBEC')
-            .setTitle(results['knowledge_panel']?.title)
-            .setDescription(results['knowledge_panel']?.description)
+            .setColor('#8C977D')
+            .setTitle(results['knowledge_panel']['title'])
+            .setDescription(results['knowledge_panel']['description'])
+
+            
 
             if (results['knowledge_panel']['images'][0]?.url) {
                 embed.setImage(results['knowledge_panel']['images'][0]['url'])
             }
             if (results['knowledge_panel']?.url) {
                 embed.setURL(results['knowledge_panel']['url'])
+            }
+
+            for (const key in results['knowledge_panel']['metadata']) {
+                const data = results['knowledge_panel']['metadata'][key]
+                const name = data['title'] || 'Unknown title'
+                const value = data['value'] || 'Unknown value'
+
+                embed.addFields({ name: name, value: value , inline: true })
+            }
+
+            interaction.reply({
+                embeds: [embed],
+                ephemeral: false,
+            })
+        } else if (results['dictionary']['word']) {
+            const embed = new EmbedBuilder()
+
+            .setFooter({ text: 'Made by Fluffy Bean#5212' })
+            .setColor('#8C977D')
+            .setTitle(results['dictionary']['word'])
+            .setDescription(results['dictionary']['phonetic'])
+
+            for (const key in results['dictionary']['definitions']) {
+                const name = results['dictionary']['definitions'][key] || 'Unknown definition'
+                const value = results['dictionary']['examples'][key] || 'No example'
+
+                embed.addFields({ name: name, value: value , inline: true })
             }
 
             interaction.reply({
@@ -206,12 +255,12 @@ client.on('interactionCreate', async (interaction) => {
             const embed = new EmbedBuilder()
 
             .setFooter({ text: 'Made by Fluffy Bean#5212' })
-            .setColor('#FEBBEC')
-            .setTitle(results['results'][0]?.title)
-            .setDescription(results['results'][0]?.description)
+            .setColor('#8C977D')
+            .setTitle(results['results'][0]['title'])
+            .setDescription(results['results'][0]['description'])
 
             if (results['results'][0]?.url) {
-                embed.setImage(results['results'][0]['url'])
+                embed.setURL(results['results'][0]['url'])
             }
 
             interaction.reply({
@@ -219,7 +268,7 @@ client.on('interactionCreate', async (interaction) => {
                 ephemeral: false,
             })
         }
-    } else if (commandName === 'image') {
+    } else if (commandName === 'image') {               // Image Search
         const query = options.getString('query')!
         const images = await google.image(query, opt);
 
@@ -234,12 +283,16 @@ client.on('interactionCreate', async (interaction) => {
             const embed = new EmbedBuilder()
 
             .setFooter({ text: 'Made by Fluffy Bean#5212' })
-            .setColor('#FEBBEC')
-            .setDescription(`Found ${count} images`)
-            .setImage(images[random].url)
+            .setColor('#8C977D')
+            .setDescription(`${query}`)
+            .setImage(images[random]['url'])
+            .addFields(
+                { name: 'Resolution', value: `${images[random]['width']} x ${images[random]['height']}`, inline: true },
+                { name: 'ID', value: images[random]['id'], inline: true },
+            )
             try {
-                embed.setTitle(images[random]['origin'].title)
-                embed.setURL(images[random]['origin']['website'].url)
+                embed.setTitle(images[random]['origin']['title'])
+                embed.setURL(images[random]['origin']['website']['url'])
             } finally {
                 interaction.reply({
                     embeds: [embed],
@@ -247,6 +300,39 @@ client.on('interactionCreate', async (interaction) => {
                 })
             }
         }
+    } else if (commandName === 'e621') {                // e621 command
+        const query = options.getString('query')!
+
+        await interaction.deferReply();
+
+        esix.search([query], { limit: 1, random: true })
+        .then(posts => {
+            for (let post of posts) {
+                if (!post) {
+                    interaction.editReply({
+                        content: 'No results found',
+                    })
+                } else {
+                    const embed = new EmbedBuilder()
+
+                    .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                    .setColor('#8C977D')
+                    .setTitle('e621')
+                    .setDescription(post.id)
+                    .setImage(post.fileUrl)
+                    /*.addFields(
+                        { name: 'Rating', value: post.rating, inline: true },
+                        { name: 'Score', value: post.score, inline: true },
+                        { name: 'Tags', value: post.tags, inline: true },
+                        { name: 'Resolution', value: `${post.width} x ${post.height}`, inline: true }
+                    )*/
+
+                    interaction.editReply({
+                        embeds: [embed],
+                    })
+                }
+            }
+        })
     }
 })
 
