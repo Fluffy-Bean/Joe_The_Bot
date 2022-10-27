@@ -32,7 +32,9 @@ const client = new DiscordJs.Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildMessageTyping,
     ],
     ws: {
         properties: {
@@ -49,7 +51,9 @@ const statusMessages = [
     'deez nuts',
     'Gwa Gwa',
     'the world burn',
-    `${client.guilds.cache.size} servers`,
+    //`${client.guilds.cache} servers`,
+    'Fluffy',
+    'porn',
 ]
 
 // Automatically updating status
@@ -68,7 +72,7 @@ const updateStatus = () => {
 client.user?.setPresence({
     status: 'dnd',
     activities: [{ 
-        name: 'To the server crying',
+        name: 'to the server crying',
         type: ActivityType.Listening,
     }],
 })
@@ -78,17 +82,10 @@ client.on('ready', () => {
     // Register the guild
     const guildID = ['950536786235490325', '860295331396845619']
     const guild = client.guilds.cache.get(guildID[0])
-    const guild2 = client.guilds.cache.get(guildID[1])
     let commands
 
     if (guild) {
         commands = guild.commands
-    } else {
-        commands = client.application?.commands
-    }
-
-    if (guild2) {
-        commands = guild2.commands
     } else {
         commands = client.application?.commands
     }
@@ -148,7 +145,13 @@ client.on('ready', () => {
                 description: 'Image to search',
                 required: true,
                 type: ApplicationCommandOptionType.String,
-            }
+            },
+            {
+                name: 'rank',
+                description: 'Rank/nth image',
+                required: false,
+                type: ApplicationCommandOptionType.Integer,
+            },
         ]
     })
 
@@ -195,8 +198,14 @@ client.on('interactionCreate', async (interaction) => {
 
     switch (commandName) {
         case 'ping': {
+            const embed = new EmbedBuilder()
+            .setFooter({ text: 'Made by Fluffy Bean#5212' })
+            .setColor('#8C977D')
+            .setTitle('Pong!')
+            .setDescription(`Ping: ${client.ws.ping}ms`)
+
             interaction.reply({
-                content: `pong ${client.ws.ping}ms`,
+                embeds: [embed],
                 ephemeral: false,
             })
 
@@ -211,13 +220,13 @@ client.on('interactionCreate', async (interaction) => {
                     embed.setTitle('Help help!')
                     embed.setDescription('How to use the bot!!!!!')
                     embed.addFields(
-                        { name: 'ping', value: 'Sends bots current ping, used for testing'},
+                        { name: 'ping', value: 'Sends bots current ping, **Testing**'},
                         { name: 'help', value: 'Shows this message' },
-                        { name: 'add', value: 'Adds two numbers, used for testing' },
+                        { name: 'add', value: 'Adds two numbers, **Testing**' },
                         { name: 'google', value: 'Searches google, can add specific searches such as definition and translate' },
                         { name: 'wiki', value: 'Searches wikipedia' },
                         { name: 'image', value: 'Searches for a random image from google related to your search' },
-                        { name: 'e621', value: 'Searches for a random image from e621 related to your search, still being tested' },
+                        { name: 'e621', value: 'Searches for a random image from e621 related to your search, **Beta**, **NSFW**' },
                     )
                     embed.setFooter({ text: 'Made by Fluffy Bean#5212', })
                     embed.setColor('#8C977D')
@@ -255,24 +264,29 @@ client.on('interactionCreate', async (interaction) => {
             const results   = await google.search(query, opt)
     
             if (!results) {
-                interaction.reply({
-                    content: 'No results found',
-                    ephemeral: true,
+                const embed = new EmbedBuilder()
+                .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                .setColor('#B66467')
+                .setTitle('Error')
+                .setDescription(`No results found for ${query}`)
+
+                interaction.editReply({
+                    embeds: [embed],
                 })
-            } else if (results['translation']['source_language']) {
-                const source_lang   = results['translation']['source_language'] || 'Unknown'
-                const source_text   = results['translation']['source_text'] || 'Unknown'
-                const target_lang   = results['translation']['target_language'] || 'Unknown'
-                const target_text   = results['translation']['target_text']|| 'Unknown'
-    
-                const embed         = new EmbedBuilder()
+            } else if (results['translation']['source_language']) {    
+                const embed = new EmbedBuilder()
                 
                 .setFooter({ text: 'Made by Fluffy Bean#5212' })
                 .setColor('#8C977D')
-    
                 .setFields(
-                    { name: source_lang, value: source_text },
-                    { name: target_lang, value: target_text }
+                    { 
+                        name: results['translation']['source_language']!,
+                        value: results['translation']['source_text']!,
+                    },
+                    { 
+                        name: results['translation']['target_language']!, 
+                        value: results['translation']['target_text']!,
+                    }
                 )
     
                 interaction.editReply({
@@ -350,25 +364,40 @@ client.on('interactionCreate', async (interaction) => {
             const images    = await google.image(query, opt)
     
             if (!images) {
+                const embed = new EmbedBuilder()
+                .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                .setColor('#B66467')
+                .setTitle('Error')
+                .setDescription(`No results found for ${query}`)
+
                 interaction.editReply({
-                    content: 'No images found',
+                    embeds: [embed],
                 })
             } else {
                 const count     = images.length
-                const random    = Math.floor(Math.random() * count)
-                const embed     = new EmbedBuilder()
+                let ranking     = options.getInteger('rank') || Math.floor(Math.random() * count)
+                ranking         = ranking-1
+
+                if (ranking >= count-1) {
+                    ranking = count-1
+                } else if (ranking <= 0) {
+                    ranking = 0
+                }
+
+                const embed = new EmbedBuilder()
     
                 .setFooter({ text: 'Made by Fluffy Bean#5212' })
                 .setColor('#8C977D')
                 .setDescription(`${query}`)
-                .setImage(images[random]['url'])
+                .setImage(images[ranking]['url'])
                 .addFields(
-                    { name: 'Resolution', value: `${images[random]['width']} x ${images[random]['height']}`, inline: true },
-                    { name: 'ID', value: images[random]['id'], inline: true },
+                    { name: 'Resolution', value: `${images[ranking]['width']} x ${images[ranking]['height']}`, inline: true },
+                    { name: 'ID', value: images[ranking]['id'], inline: true },
+                    { name: 'Rank', value: `${ranking+1}/${count}`, inline: true },
                 )
                 try {
-                    embed.setTitle(images[random]['origin']['title'])
-                    embed.setURL(images[random]['origin']['website']['url'])
+                    embed.setTitle(images[ranking]['origin']['title'])
+                    embed.setURL(images[ranking]['origin']['website']['url'])
                 } finally {
                     interaction.editReply({
                         embeds: [embed],
@@ -383,34 +412,51 @@ client.on('interactionCreate', async (interaction) => {
                 ephemeral: false,
             })
     
-            const query = options.getString('query')!
+            const query = options.getString('query')!.split(/ /)
     
-            esix.search([query], { limit: 1, random: true })
+            esix.search(query, { limit: 1, random: true })
             .then(posts => {
                 for (let post of posts) {
-                    if (!post) {
-                        interaction.editReply({
-                            content: 'No results found',
-                        })
-                    } else {
-                        const embed = new EmbedBuilder()
-    
-                        .setFooter({ text: 'Made by Fluffy Bean#5212' })
-                        .setColor('#8C977D')
-                        .setTitle('e621')
-                        .setDescription(post.id)
-                        .setImage(post.fileUrl)
-                        .addFields(
-                            { name: 'Rating', value: post.rating.toString(), inline: true },
-                            { name: 'Score', value: post.score.toString(), inline: true },
-                            { name: 'Tags', value: post.tags.toString(), inline: true },
-                            { name: 'Resolution', value: `${post.width} x ${post.height}`, inline: true }
-                        )
-    
-                        interaction.editReply({
-                            embeds: [embed],
-                        })
-                    }
+                    const embed = new EmbedBuilder()
+
+                    .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                    .setColor('#8C977D')
+                    .setTitle('e621')
+                    .setDescription(post.id)
+                    .setImage(post.fileUrl)
+                    .addFields(
+                        { name: 'Rating', value: post.rating.toString(), inline: true },
+                        { name: 'Score', value: post.score.toString(), inline: true },
+                        { name: 'Resolution', value: `${post.width} x ${post.height}`, inline: true },
+                        { name: 'Tags', value: post.tags.toString(), inline: true },
+                    )
+
+                    interaction.editReply({
+                        embeds: [embed],
+                    })
+                }
+            })
+            .catch(err => {
+                if (err.name === 'booruError') {
+                    const embed = new EmbedBuilder()
+                    .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                    .setColor('#B66467')
+                    .setTitle('Error')
+                    .setDescription(`No results found for ${query}`)
+
+                    interaction.editReply({
+                        embeds: [embed],
+                    })
+                } else {
+                    const embed = new EmbedBuilder()
+                    .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                    .setColor('#B66467')
+                    .setTitle('Error')
+                    .setDescription(`No results found for ${query}`)
+
+                    interaction.editReply({
+                        embeds: [embed],
+                    })
                 }
             })
 
@@ -420,26 +466,52 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.deferReply({
                 ephemeral: false,
             })
-    
+            
             const query     = options.getString('query')!
-            const results   = await wiki().page(query)
-            const summary   = await results.summary()
-            const embed     = new EmbedBuilder()
     
-            .setFooter({ text: 'Made by Fluffy Bean#5212' })
-            .setColor('#8C977D')
-            .setTitle(results.raw.title)
-            .setDescription(summary)
-            .setURL(results.raw.fullurl)
-            .setImage(await results.mainImage())
-            .addFields(
-                { name: 'Page ID', value: results.raw.pageid.toString(), inline: true },
-                { name: 'Article length', value: results.raw.length.toString(), inline: true },
-            )
-    
-            interaction.editReply({
-                embeds: [embed],
-            })
+            try {
+                const results   = await wiki().page(query)
+                const summary   = await results.summary()
+
+                if (!summary) {
+                    const embed = new EmbedBuilder()
+                    .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                    .setColor('#B66467')
+                    .setTitle('Error')
+                    .setDescription(`No results found for ${query}`)
+
+                    interaction.editReply({
+                        embeds: [embed],
+                    })
+                } else {
+                    const embed     = new EmbedBuilder()
+            
+                    .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                    .setColor('#8C977D')
+                    .setTitle(results.raw.title)
+                    .setDescription(summary)
+                    .setURL(results.raw.fullurl)
+                    .setImage(await results.mainImage())
+                    .addFields(
+                        { name: 'Page ID', value: results.raw.pageid.toString(), inline: true },
+                        { name: 'Article length', value: results.raw.length.toString(), inline: true },
+                    )
+            
+                    interaction.editReply({
+                        embeds: [embed],
+                    })
+                }
+            } catch (error) {
+                const embed = new EmbedBuilder()
+                .setFooter({ text: 'Made by Fluffy Bean#5212' })
+                .setColor('#B66467')
+                .setTitle('Error')
+                .setDescription(`No results found for ${query}`)
+
+                interaction.editReply({
+                    embeds: [embed],
+                })
+            }
 
             break
         }
