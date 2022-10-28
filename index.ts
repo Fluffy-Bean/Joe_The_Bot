@@ -1,7 +1,7 @@
 console.log('|+++++++++++++++++++++++|\n\
 | Welcome to Joe.ts!!!! |\n\
 |+++++++++++++++++++++++|')
-console.log('Starting the bot now...')
+console.log('=> Starting the bot now...')
 
 import DiscordJs, { ApplicationCommandOptionType, GatewayIntentBits, ActivityType, EmbedBuilder } from 'discord.js'
 import google from 'googlethis'
@@ -25,7 +25,7 @@ const opt = {
     }
 }
 
-console.log(' -> Imported all the modules')
+console.log(' > Imported all the modules')
 
 const client = new DiscordJs.Client({
     intents: [
@@ -43,7 +43,7 @@ const client = new DiscordJs.Client({
     }
 })
 
-console.log(' -> Set up client')
+console.log(' > Set up client')
 
 // Create a new client and set the intents
 const statusMessages = [
@@ -183,9 +183,9 @@ client.on('ready', () => {
         ]
     })
 
-    console.log(' -> Registered slash commands')
+    console.log(' > Registered slash commands')
 
-    console.log('Bot is up bitch')
+    console.log('=> Bot is up bitch')
     updateStatus()
 })
 
@@ -209,6 +209,7 @@ client.on('interactionCreate', async (interaction) => {
                 ephemeral: false,
             })
 
+            console.log(`> Ping: ${client.ws.ping}ms\n  (${interaction.member?.user})`)
             break
         }
         case 'help': {
@@ -238,7 +239,8 @@ client.on('interactionCreate', async (interaction) => {
                 embeds: [embed],
                 ephemeral: true,
             })
-            
+
+            console.log(`> Help\n  (${interaction.member?.user})`)
             break
         }
         case 'add': {
@@ -253,6 +255,7 @@ client.on('interactionCreate', async (interaction) => {
                 content: `The sum is ${num1 + num2}`,
             })
 
+            console.log(`> Add: ${num1} + ${num2}\n  (${interaction.member?.user})`)
             break
         }
         case 'google': {
@@ -353,6 +356,7 @@ client.on('interactionCreate', async (interaction) => {
                 })
             }
 
+            console.log(`> Google: ${query}\n  (${interaction.member?.user})`)
             break
         }
         case 'image': {
@@ -405,6 +409,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
             }
 
+            console.log(`> Image: ${query}\n  (${interaction.member?.user})`)
             break
         }
         case 'e621': {
@@ -460,6 +465,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
             })
 
+            console.log(`> e621: ${query}\n  (${interaction.member?.user})`)
             break
         }
         case 'wiki': {
@@ -513,6 +519,7 @@ client.on('interactionCreate', async (interaction) => {
                 })
             }
 
+            console.log(`> Wiki: ${query}\n  (${interaction.member?.user})`)
             break
         }
         default: {
@@ -521,7 +528,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 })
 
-console.log(' -> Loaded commands')
+console.log(' > Loaded commands')
 
 // Login the client
 client.login(process.env.TOKEN)
